@@ -9,7 +9,7 @@
 - can remove any other local admin accounts if desired
 - can whitelist approved admins or groups from AzureAD or Active Directory
 - stores passwords and the password history in a safe place
-- does not need additional powershel modules
+- does not need additional PowerShell modules
 
 ## Prerequirements:
 - Source code from here
@@ -20,8 +20,8 @@
 1. Logon to Azure
 2. Create RessourceGroup or use an existing
 2. Create a KeyVault in a region of your choice
-3. Create a simple [AzureAd Enterprise Application](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
-4. Set Permissions inyour KeyVault using a [Vault access Policy](https://learn.microsoft.com/en-us/azure/key-vault/general/assign-access-policy?tabs=azure-portal)
+3. Create a simple [AzureAD Enterprise Application](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
+4. Set Permissions in your KeyVault using a [Vault access Policy](https://learn.microsoft.com/en-us/azure/key-vault/general/assign-access-policy?tabs=azure-portal)
 
 ## Modification of the Script
 1. Download the [Script](https://github.com/TrueKillRob/slaps/blob/main/simpleLAPS.ps1) to your computer
