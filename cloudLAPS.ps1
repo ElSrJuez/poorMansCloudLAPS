@@ -132,7 +132,6 @@ if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductT
 
 #>
 
-
 $Config = Import-Clixml CloudLAPS.xml
 $markerFile = Join-Path . -ChildPath $Config.markerfile
 $markerFileExists = (Test-Path $markerFile)
