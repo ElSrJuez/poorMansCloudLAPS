@@ -154,11 +154,11 @@ if($mode -ne "detect" -and -not $Config.Debug ){
 
 $Error.Clear()
 
-try{
-    $localAdmin = $Null
+Remove-Variable localAdmin, BlackHole -ErrorAction SilentlyContinue
+try{    
     $localAdmin = Get-LocalUser | Where-Object { $_.SID.Value.EndsWith("-500") }
     if ( $Config.localAdminName -and $localAdmin.Name -ne $Config.localAdminName) {
-        Write-CustomEventLog "Rename lokal Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'"
+        Write-CustomEventLog "Rename local Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'"        
         $BlackHole = Get-LocalUser -Name $Config.localAdminName -ErrorAction:SilentlyContinue
         if ( $BlackHole ) {
             Write-CustomEventLog "Remove preexisting '$($localAdmin.Name)' '$($BlackHole.SID.Value)'"
@@ -178,9 +178,10 @@ try{
     Exit 1
 }
 
+Remove-Variable administratorsGroupName, group, administrators -ErrorAction SilentlyContinue
 try{
     $administratorsGroupName = (New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")).Translate([System.Security.Principal.NTAccount]).Value.Split("\")[1]
-    Write-CustomEventLog "local administrators group is called $administratorsGroupName"
+    Write-CustomEventLog "Local Administrators group is called $administratorsGroupName"
     $group = [ADSI]::new("WinNT://$($env:COMPUTERNAME)/$($administratorsGroupName),Group")
     $administrators = $group.Invoke('Members') | ForEach-Object {(New-Object -TypeName System.Security.Principal.SecurityIdentifier -ArgumentList @([Byte[]](([ADSI]$_).properties.objectSid).Value, 0)).Value}
     
@@ -192,13 +193,13 @@ try{
         Write-CustomEventLog "Added $($Config.localAdminName) to the local administrators group"
     }
     #remove other local admins if specified, only executes if adding the new local admin succeeded
-    if($removeOtherLocalAdmins){
+    if($Config.removeOtherLocalAdmins){
         foreach($administrator in $administrators){
             if($administrator.EndsWith("-500")){
                 Write-CustomEventLog "Not removing $($administrator) because it is a built-in account and cannot be removed"
                 continue
             }
-            if($administrator -ne $localAdmin.SID.Value -and $approvedAdmins -notcontains $administrator){
+            if($administrator -ne $localAdmin.SID.Value -and $Config.approvedAdmins -notcontains $administrator){
                 Write-CustomEventLog "removeOtherLocalAdmins set to True, removing $($administrator) from Local Administrators"
                 Remove-LocalGroupMember -Group $administratorsGroupName -Member $administrator -Confirm:$False -WhatIf:$WhatIf | Out-Null
                 Write-CustomEventLog "Removed $administrator from Local Administrators"
@@ -215,11 +216,12 @@ try{
     Exit 1
 }
 
+Remove-Variable newPwd, newPwdSecStr, AZToken, BlackHole -ErrorAction SilentlyContinue
 try{
     Write-CustomEventLog "Setting password for $($Config.localAdminName) ..."
-    $newPwd = Get-NewPassword $minimumPasswordLength
-    $newPwdSecStr = ConvertTo-SecureString $newPwd -asplaintext -force
-    $AZToken = Connect-AZKeyVault -tenantId $tenantID -Client_ID $AZAppID -Secret $AZAppSecret
+    $newPwd = Get-NewPassword $Config.minimumPasswordLength
+    $newPwdSecStr = ConvertTo-SecureString $newPwd -asplaintext -force    
+    $AZToken = Connect-AZKeyVault -tenantId $Config.tenantID -Client_ID $Config.AZAppID -Secret $Config.AZAppSecret
     if ( -not $AZToken ) { throw }
     $BlackHole = Write-AZKeyVaultSecret -VaultName $AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
     if ( -not $BlackHole ) { throw }
