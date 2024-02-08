@@ -1,4 +1,4 @@
-# poorMansCloudLAPS
+# poorMans CloudLAPS
 ## _a simple solution for Servers_
 ### It all started from leanLAPS from LiebenConsulting: [leanLAPS](https://www.lieben.nu/liebensraum/2021/06/lightweight-laps-solution-for-intune-mde/)
 ### Forked from simpleLAPS from TrueKillRob:https://github.com/TrueKillRob/slaps/tree/main
@@ -30,12 +30,12 @@
 
 ## Creating a parameters file
 1. Create a copy of the parameters xml file template
-2. Modify line 19, 20 and 21 to the IDs of your Azure Tenant, App ID and App Secret
+2. Modify parameters as needed
 
-## Installation of simpleLAPS.ps1
+## Installation of CloudLAPS.ps1
 1. On a test computer, create a folder like C:\Temp\CloudLAPS
 2. Clone this repo or download the CloudLAPS.ps1 file
-3. Copy the xml file using CloudLAPS.xml file name.
+3. Copy the xml file using CloudLAPS.xml file name into the same folder.
 4. Open a powershell prompt, change to the folder and run the script.
 5. Check the local log file for a succesful result
 6. Check the Log Analytics workspace for activity
