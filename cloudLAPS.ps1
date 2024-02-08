@@ -1,15 +1,12 @@
 <#
     .DESCRIPTION
-    Local Admin Password Rotation and Account Management
-    Inspired from https://www.lieben.nu/liebensraum/?p=3605
+    a simple solution for Servers
+    It all started from leanLAPS from LiebenConsulting: leanLAPS
+    Forked from simpleLAPS from TrueKillRob:https://github.com/TrueKillRob/slaps/tree/main
+    
     Installation:
-    - Set configuration values, and follow rollout instructions at https://www.lieben.nu/liebensraum/?p=3605
-    - Create an Azure-KeyVault
-    - Create AzureAD-Enterprise App
-    - Give The App Access (Create Secret only) with the configuration in your KeyVault 
-        https://learn.microsoft.com/en-us/azure/key-vault/general/assign-access-policy?tabs=azure-portal
-
-    Not tested in hybrid scenario's. Should work, but may conflict with e.g. specific password policies.
+    Get General info here:
+    https://github.com/ElSrJuez/poorMansCloudLAPS
 #>
 
 $Debug = $False
