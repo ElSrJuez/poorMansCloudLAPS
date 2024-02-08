@@ -9,10 +9,6 @@
     https://github.com/ElSrJuez/poorMansCloudLAPS
 #>
 
-$Config = Import-Clixml CloudLAPS.xml
-$markerFile = Join-Path . -ChildPath $Config.markerfile
-$markerFileExists = (Test-Path $markerFile)
-
 #===============================================================================
 function Connect-AZKeyVault {
     param (
@@ -103,10 +99,10 @@ Function Write-CustomEventLog($Message){
         if ([System.Diagnostics.EventLog]::Exists('Application') -eq $False -or [System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $False){
             New-EventLog -LogName Application -Source $EventSource  | Out-Null
         }
-        Write-EventLog -LogName Application -Source $EventSource -EntryType Information -EventId 1985 -Message $Message | Out-Null
+        Write-EventLog -LogName Application -Source $EventSource -EntryType Information -EventId 2024 -Message $Message | Out-Null
     }
     else {
-        Write-Output "$EventSource ID:1985 Message: $Message"
+        Write-Host "$EventSource ID:2024 Message: $Message"
     }
 }
 #===============================================================================
@@ -119,6 +115,19 @@ if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductT
 }
 #===============================================================================
 #===============================================================================
+
+$Config = Import-Clixml CloudLAPS.xml
+$markerFile = Join-Path . -ChildPath $Config.markerfile
+$markerFileExists = (Test-Path $markerFile)
+
+if (($Config.AZVaultName | Get-Member).TypeName -eq 'System.String' ) {
+    Write-CustomEventLog "CloudLAPS read AZ Vault Name $($Config.AZVaultName) from configuration file."
+}
+else
+{
+    Write-CustomEventLog "CloudLAPS got unexpected result for configuration value AZVaultName, exiting."
+    return
+}
 
 <#
 We're not in Intune - may not be needed
