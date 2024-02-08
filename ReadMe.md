@@ -22,7 +22,7 @@
 
 ## Creation of Azure KeyVault and Log Analytics Workspace
 1. Logon to Azure
-2. Create RessourceGroup or use an existing
+2. Create Resource Group or use an existing
 2. Create a KeyVault in a region of your choice
 3. Create a simple [AzureAD Enterprise Application](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
 4. Set Permissions in your KeyVault using a [Vault access Policy](https://learn.microsoft.com/en-us/azure/key-vault/general/assign-access-policy?tabs=azure-portal)
@@ -33,11 +33,11 @@
 2. Modify line 19, 20 and 21 to the IDs of your Azure Tenant, App ID and App Secret
 
 ## Installation of simpleLAPS.ps1
-1. Open your intune environment and go to Home --> Reports --> Endpoint analytics
-2. Create a new custom Script
-3. Define a name and description etc
-4. Upload the modified simpleLAPS.PS1 as detection and as remediation
-5. Disable "Run this Script using logged-on-credentials"
-6. Disable "Enforce script signature check"
-7. Enable "Run script in 64-bit PowerShell"
-8. Assign the script to the destination computers
+1. On a test computer, create a folder like C:\Temp\CloudLAPS
+2. Clone this repo or download the CloudLAPS.ps1 file
+3. Copy the xml file using CloudLAPS.xml file name.
+4. Open a powershell prompt, change to the folder and run the script.
+5. Check the local log file for a succesful result
+6. Check the Log Analytics workspace for activity
+7. Check the Key Vault for the updated secret
+9. If all works, create a Scheduled Task that runs this script as SYSTEM with the desired frequency.
