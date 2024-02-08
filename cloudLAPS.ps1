@@ -94,19 +94,33 @@ function Get-NewPassword($passwordLength){ #minimum 10 characters will always be
 }
 #===============================================================================
 Function Write-CustomEventLog($Message){
+    # Write to the event log
     $EventSource=".CloudLAPS"
-    if ( -not $Config.Debug ) {
-        if ([System.Diagnostics.EventLog]::Exists('Application') -eq $False -or [System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $False){
-            New-EventLog -LogName Application -Source $EventSource  | Out-Null
-        }
-        Write-EventLog -LogName Application -Source $EventSource -EntryType Information -EventId 2024 -Message $Message | Out-Null
+    if ([System.Diagnostics.EventLog]::Exists('Application') -eq $False -or [System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $False){
+        New-EventLog -LogName Application -Source $EventSource  | Out-Null
     }
-    else {
+    Write-EventLog -LogName Application -Source $EventSource -EntryType Information -EventId 2024 -Message $Message | Out-Null
+    # Also log to console if in debug mode
+    if ($Config.Debug) {
         Write-Host "$EventSource ID:2024 Message: $Message"
     }
 }
+
+Remove-Variable identity, principal -ErrorAction SilentlyContinue
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal -ArgumentList $identity
+if ($principal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )) {
+    Write-CustomEventLog "CloudLAPS starting on $($ENV:COMPUTERNAME) as $($MyInvocation.MyCommand.Name) under Identity $($identity.name)."
+
+}
+else {
+    write-host "Identity $($identity.name) was determined not to be Administrator, exiting."
+    return
+}
+
+<#
+deprecate server check
 #===============================================================================
-Write-CustomEventLog "CloudLAPS starting on $($ENV:COMPUTERNAME) as $($MyInvocation.MyCommand.Name)"
 
 if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductType -ne 1){
     Write-CustomEventLog "Unsupported OS!"
@@ -116,6 +130,9 @@ if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductT
 #===============================================================================
 #===============================================================================
 
+#>
+
+
 $Config = Import-Clixml CloudLAPS.xml
 $markerFile = Join-Path . -ChildPath $Config.markerfile
 $markerFileExists = (Test-Path $markerFile)
@@ -123,8 +140,7 @@ $markerFileExists = (Test-Path $markerFile)
 if (($Config.AZVaultName | Get-Member).TypeName -eq 'System.String' ) {
     Write-CustomEventLog "CloudLAPS read AZ Vault Name $($Config.AZVaultName) from configuration file."
 }
-else
-{
+else {
     Write-CustomEventLog "CloudLAPS got unexpected result for configuration value AZVaultName, exiting."
     return
 }
@@ -167,9 +183,16 @@ try{
         Rename-LocalUser -SID $localAdmin.SID.Value -NewName $Config.localAdminName -Confirm:$false -WhatIf:$WhatIf | Out-Null
         $localAdmin = Get-LocalUser -SID $localAdmin.SID.Value
     }
+    else {
+        Write-CustomEventLog "No need to rename local Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'." 
+    }
+
     if ( -not $localAdmin.Enabled ) {
-        Write-CustomEventLog "Enable lokal Administrator."
+        Write-CustomEventLog "Found local Administrator account disabled, attempting to Enable local '$($localAdmin.Name)'..."
         Enable-LocalUser -SID $localAdmin.SID.Value -WhatIf:$WhatIf | Out-Null
+    }
+    else {
+        Write-CustomEventLog "No need to enable local Administrator '$($localAdmin.Name)'." 
     }
     if(!$localAdmin){Throw}
 }catch{
@@ -208,7 +231,7 @@ try{
             }
         }
     }else{
-        Write-CustomEventLog "removeOtherLocalAdmins set to False, not removing any administrator permissions"
+        Write-CustomEventLog "removeOtherLocalAdmins set to False, not removing any other accounts from group."
     }
 }catch{
     Write-CustomEventLog "Something went wrong while processing the local administrators group $($_)"
@@ -218,21 +241,27 @@ try{
 
 Remove-Variable newPwd, newPwdSecStr, AZToken, BlackHole -ErrorAction SilentlyContinue
 try{
-    Write-CustomEventLog "Setting password for $($Config.localAdminName) ..."
+    Write-CustomEventLog "Setting password for '$($localAdmin.Name)'..."
     $newPwd = Get-NewPassword $Config.minimumPasswordLength
     $newPwdSecStr = ConvertTo-SecureString $newPwd -asplaintext -force    
     $AZToken = Connect-AZKeyVault -tenantId $Config.tenantID -Client_ID $Config.AZAppID -Secret $Config.AZAppSecret
-    if ( -not $AZToken ) { throw }
-    $BlackHole = Write-AZKeyVaultSecret -VaultName $AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
-    if ( -not $BlackHole ) { throw }
+    if ( -not $AZToken ) { 
+        Write-CustomEventLog "Unexpected result connecting to azure on tenant '$($Config.tenantID)' with Client ID '$($Config.AZAppID)'."
+        throw 
+    }
+    $BlackHole = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
+    if ( -not $BlackHole ) { 
+        Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
+        throw
+        }
     $localAdmin | Set-LocalUser -Password $newPwdSecStr -Confirm:$False -AccountNeverExpires -PasswordNeverExpires $True -UserMayChangePassword $True -WhatIf:$WhatIf | Out-Null
-    Write-CustomEventLog "Password for $($Config.localAdminName) set to a new value, see AzureKeyVault $AZVaultName"
+    Write-CustomEventLog "Password for $($localAdmin.Name) set to a new value, see AzureKeyVault '$($Config.AZVaultName)'."
 }catch{
-    Write-CustomEventLog "Failed to set new password for $($Config.localAdminName)"
-    Write-Host "Failed to set password for $($Config.localAdminName) because of $($_)"
-    Exit 1
+    Write-CustomEventLog "Unexpected error returned trying to set new password for $($localAdmin.Name)"
+    Write-Host "Failed to set password for $($localAdmin.Name) because of $($_)"
+    # Exit 1
 }
 
 Write-Host "LeanLAPS ran successfully for $($Config.localAdminName)"
 Set-Content -Path $markerFile -Value $Config.localAdminName -Force -Confirm:$False | Out-Null
-Exit 0
+# Exit 0
