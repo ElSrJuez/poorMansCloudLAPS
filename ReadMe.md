@@ -1,7 +1,7 @@
 # poorMansCloudLAPS
 ## _a simple solution for Servers_
-### Based on and inspired from leanLAPS from LiebenConsulting: [leanLAPS](https://www.lieben.nu/liebensraum/2021/06/lightweight-laps-solution-for-intune-mde/)
-### Based on and inspired from simpleLAPS from TrueKillRob:https://github.com/TrueKillRob/slaps/tree/main
+### It all started from leanLAPS from LiebenConsulting: [leanLAPS](https://www.lieben.nu/liebensraum/2021/06/lightweight-laps-solution-for-intune-mde/)
+### Forked from simpleLAPS from TrueKillRob:https://github.com/TrueKillRob/slaps/tree/main
 
 ## Features
 - Does not require/modify registry keys
