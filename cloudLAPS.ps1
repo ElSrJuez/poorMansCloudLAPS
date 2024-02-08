@@ -98,8 +98,8 @@ function Get-NewPassword($passwordLength){ #minimum 10 characters will always be
 }
 #===============================================================================
 Function Write-CustomEventLog($Message){
-    $EventSource=".simpleLAPS"
-    if ( -not $Debug ) {
+    $EventSource=".CloudLAPS"
+    if ( -not $Config.Debug ) {
         if ([System.Diagnostics.EventLog]::Exists('Application') -eq $False -or [System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $False){
             New-EventLog -LogName Application -Source $EventSource  | Out-Null
         }
@@ -110,7 +110,7 @@ Function Write-CustomEventLog($Message){
     }
 }
 #===============================================================================
-Write-CustomEventLog "simpleLAPS starting on $($ENV:COMPUTERNAME) as $($MyInvocation.MyCommand.Name)"
+Write-CustomEventLog "CloudLAPS starting on $($ENV:COMPUTERNAME) as $($MyInvocation.MyCommand.Name)"
 
 if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductType -ne 1){
     Write-CustomEventLog "Unsupported OS!"
@@ -120,10 +120,13 @@ if($doNotRunOnServers -and (Get-WmiObject -Class Win32_OperatingSystem).ProductT
 #===============================================================================
 #===============================================================================
 
+<#
+We're not in Intune - may not be needed
 $mode = $MyInvocation.MyCommand.Name.Split(".")[0]
 
+
 #when in remediation mode, always exit successfully as we remediated during the detection phase
-if($mode -ne "detect" -and -not $Debug ){
+if($mode -ne "detect" -and -not $Config.Debug ){
     Exit 0
 }else{
     #check if marker file present, which means we're in the 2nd detection run where nothing should happen except posting the new password to Intune
@@ -138,20 +141,21 @@ if($mode -ne "detect" -and -not $Debug ){
         Exit 0
     }
 }
+#>
 
 $Error.Clear()
 
 try{
     $localAdmin = $Null
     $localAdmin = Get-LocalUser | Where-Object { $_.SID.Value.EndsWith("-500") }
-    if ( $localAdminName -and $localAdmin.Name -ne $localAdminName) {
-        Write-CustomEventLog "Rename lokal Administrator from '$($localAdmin.Name)' to '$localAdminName'"
-        $BlackHole = Get-LocalUser -Name $localAdminName -ErrorAction:SilentlyContinue
+    if ( $Config.localAdminName -and $localAdmin.Name -ne $Config.localAdminName) {
+        Write-CustomEventLog "Rename lokal Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'"
+        $BlackHole = Get-LocalUser -Name $Config.localAdminName -ErrorAction:SilentlyContinue
         if ( $BlackHole ) {
             Write-CustomEventLog "Remove preexisting '$($localAdmin.Name)' '$($BlackHole.SID.Value)'"
             Remove-LocalUser -SID $BlackHole.SID.Value -Confirm:$False -WhatIf:$WhatIf | Out-Null
         }
-        Rename-LocalUser -SID $localAdmin.SID.Value -NewName $localAdminName -Confirm:$false -WhatIf:$WhatIf | Out-Null
+        Rename-LocalUser -SID $localAdmin.SID.Value -NewName $Config.localAdminName -Confirm:$false -WhatIf:$WhatIf | Out-Null
         $localAdmin = Get-LocalUser -SID $localAdmin.SID.Value
     }
     if ( -not $localAdmin.Enabled ) {
@@ -160,8 +164,8 @@ try{
     }
     if(!$localAdmin){Throw}
 }catch{
-    Write-CustomEventLog "Something went wrong while renaming or activating $localAdminName $($_)"
-    Write-Host "Something went wrong while renaming or activating $localAdminName $($_)"
+    Write-CustomEventLog "Something went wrong while renaming or activating $($Config.localAdminName) $($_)"
+    Write-Host "Something went wrong while renaming or activating $($Config.localAdminName) $($_)"
     Exit 1
 }
 
@@ -174,9 +178,9 @@ try{
     Write-CustomEventLog "There are $($administrators.count) readable accounts in $administratorsGroupName"
 
     if(!$administrators -or $administrators -notcontains $localAdmin.SID.Value){
-        Write-CustomEventLog "$localAdminName is not a local administrator, adding..."
-        Add-LocalGroupMember -Group $administratorsGroupName -Member $localAdminName -Confirm:$False -ErrorAction Stop -WhatIf:$WhatIf | Out-Null
-        Write-CustomEventLog "Added $localAdminName to the local administrators group"
+        Write-CustomEventLog "$($Config.localAdminName) is not a local administrator, adding..."
+        Add-LocalGroupMember -Group $administratorsGroupName -Member $Config.localAdminName -Confirm:$False -ErrorAction Stop -WhatIf:$WhatIf | Out-Null
+        Write-CustomEventLog "Added $($Config.localAdminName) to the local administrators group"
     }
     #remove other local admins if specified, only executes if adding the new local admin succeeded
     if($removeOtherLocalAdmins){
@@ -203,21 +207,21 @@ try{
 }
 
 try{
-    Write-CustomEventLog "Setting password for $localAdminName ..."
+    Write-CustomEventLog "Setting password for $($Config.localAdminName) ..."
     $newPwd = Get-NewPassword $minimumPasswordLength
     $newPwdSecStr = ConvertTo-SecureString $newPwd -asplaintext -force
     $AZToken = Connect-AZKeyVault -tenantId $tenantID -Client_ID $AZAppID -Secret $AZAppSecret
     if ( -not $AZToken ) { throw }
-    $BlackHole = Write-AZKeyVaultSecret -VaultName $AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $localAdminName -Secret $newPwd
+    $BlackHole = Write-AZKeyVaultSecret -VaultName $AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
     if ( -not $BlackHole ) { throw }
     $localAdmin | Set-LocalUser -Password $newPwdSecStr -Confirm:$False -AccountNeverExpires -PasswordNeverExpires $True -UserMayChangePassword $True -WhatIf:$WhatIf | Out-Null
-    Write-CustomEventLog "Password for $localAdminName set to a new value, see AzureKeyVault $AZVaultName"
+    Write-CustomEventLog "Password for $($Config.localAdminName) set to a new value, see AzureKeyVault $AZVaultName"
 }catch{
-    Write-CustomEventLog "Failed to set new password for $localAdminName"
-    Write-Host "Failed to set password for $localAdminName because of $($_)"
+    Write-CustomEventLog "Failed to set new password for $($Config.localAdminName)"
+    Write-Host "Failed to set password for $($Config.localAdminName) because of $($_)"
     Exit 1
 }
 
-Write-Host "LeanLAPS ran successfully for $($localAdminName)"
-Set-Content -Path $markerFile -Value $localAdminName -Force -Confirm:$False | Out-Null
+Write-Host "LeanLAPS ran successfully for $($Config.localAdminName)"
+Set-Content -Path $markerFile -Value $Config.localAdminName -Force -Confirm:$False | Out-Null
 Exit 0
