@@ -12,9 +12,10 @@
 - Stores passwords in Azure Key Vault using Computer Name
 - Authentication using Azure App
 - Maximum possible security - App only requires 'Set Secret' permission on key vault (Cannot read secrets)
-- Logs activites to a Log Analytics Workspace
-- Soes not need additional PowerShell modules
-- Soes not use/need Intune
+- Logs activites to a Log Analytics Workspace **
+- Does not need external PowerShell modules
+- Does not use/need Intune
+- Uses Windows Password expiration policy to establish password reset cadence
 
 ## Prerequirements:
 - Source code from here
@@ -26,10 +27,10 @@
 1. Logon to Azure
 2. Create Resource Group or use an existing
 2. Create a KeyVault in a region of your choice
-3. Create a simple [AzureAD Enterprise Application](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
 4. Set Permissions in your KeyVault using [RBAC](https://learn.microsoft.com/en-gb/azure/key-vault/general/rbac-guide?tabs=azurepowershell)
     - Create a custom role with 'Microsoft.KeyVault/vaults/secrets/getSecret/action' permissions
-    - Create an Azure App Registration, assign the custom role: (https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
+    - Create an Entra ID App [Entra ID App Registration](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
+    - Assign the custom role, assign to principal: (https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
     - Create an [App Secret](https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
 6. Create a Log Analytics workspace [https://learn.microsoft.com/en-us/azure/azure-monitor/logs/quick-create-workspace?tabs=azure-portal]
 
