@@ -142,7 +142,7 @@ try{
             Remove-LocalUser -SID $BlackHole.SID.Value -Confirm:$False -WhatIf:$Config.WhatIf | Out-Null
         }
         Rename-LocalUser -SID $localAdmin.SID.Value -NewName $Config.localAdminName -Confirm:$false -WhatIf:$Config.WhatIf | Out-Null
-        $localAdmin = Get-LocalUser -SID $localAdmin.SID.Value
+        #$localAdmin = Get-LocalUser -SID $localAdmin.SID.Value
     }
     else {
         Write-CustomEventLog "With renameAdminAccount set to '$($Config.renameAdminAccount)', no need to rename local Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'." 
@@ -201,9 +201,9 @@ try{
     Exit 1
 }
 
-Remove-Variable newPwd, newPwdSecStr, AZToken, BlackHole -ErrorAction SilentlyContinue
+Remove-Variable newPwd, newPwdSecStr, AZToken, WriteSecretSuccess,localAdminWMI, passwordExpires, passwordExpirationDate, myCurrentDate -ErrorAction SilentlyContinue
 try{
-    Write-CustomEventLog "Setting password for '$($localAdmin.Name)', PasswordNeverExpires to '$($Config.PasswordNeverExpires)', WhatIf mode '$($Config.WhatIf)'..."
+    Write-CustomEventLog "Starting password rotation flow for '$($localAdmin.Name)', setting PasswordNeverExpires is '$($Config.PasswordNeverExpires)', setting WhatIf is '$($Config.WhatIf)'..."
     $newPwd = Get-NewPassword $Config.minimumPasswordLength
     $newPwdSecStr = ConvertTo-SecureString $newPwd -asplaintext -force    
     $AZToken = Connect-AZKeyVault -tenantId $Config.tenantID -Client_ID $Config.AZAppID -Secret $Config.AZAppSecret
@@ -211,13 +211,33 @@ try{
         Write-CustomEventLog "Unexpected result connecting to azure on tenant '$($Config.tenantID)' with Client ID '$($Config.AZAppID)'."
         throw 
     }
-    $BlackHole = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
-    if ( -not $BlackHole ) { 
-        Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
-        throw
+    if ($false -eq $Config.PasswordNeverExpires) {
+        $localAdminWMI = Get-WmiObject -Query "SELECT * FROM Win32_UserAccount WHERE SID='$($localAdmin.SID)'"
+        $passwordExpires = $localAdminWMI.Properties | 
+            where-Object {$_.Name -eq 'PasswordExpires'} |
+                Select-Object -ExpandProperty Value
+        if ($Config.PasswordNeverExpires -eq $passwordExpires) {
+            Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$(PasswordNeverExpires)'."
+            $localAdmin | Set-LocalUser -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
+            Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
         }
-    $localAdmin | Set-LocalUser -Password $newPwdSecStr -Confirm:$False -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
-    Write-CustomEventLog "Password for $($localAdmin.Name) set to a new value, see AzureKeyVault '$($Config.AZVaultName)' with WhatIf mode set to '$($Config.WhatIf)'."
+    }
+    $myCurrentDate = Get-Date
+    [datetime]$passwordExpirationDate = Get-LocalUser $localAdmin |
+        Select-Object -ExpandProperty PasswordExpires
+    if ($myCurrentDate -gt $passwordExpirationDate) {
+        $WriteSecretSuccess = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
+        if ( -not $WriteSecretSuccess ) { 
+            Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
+            throw
+            }
+        $localAdmin | Set-LocalUser -Password $newPwdSecStr -Confirm:$False -WhatIf:$Config.WhatIf | Out-Null
+        Write-CustomEventLog "Password for $($localAdmin.Name) set to a new value, see AzureKeyVault '$($Config.AZVaultName)' with WhatIf mode set to '$($Config.WhatIf)'."
+    }
+    else
+    {
+        Write-CustomEventLog "Password for $($localAdmin.Name) did not need to be set, current date '$myCurrentDate' is greater than password expiration date '$($passwordExpirationDate)'."
+    }
 }catch{
     Write-CustomEventLog "Unexpected error returned trying to set new password for $($localAdmin.Name)"
     Write-Host "Failed to set password for $($localAdmin.Name) because of $($_)"
