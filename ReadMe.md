@@ -28,7 +28,7 @@
 2. Create Resource Group or use an existing
 2. Create a KeyVault in a region of your choice
 4. Set Permissions in your KeyVault using [RBAC](https://learn.microsoft.com/en-gb/azure/key-vault/general/rbac-guide?tabs=azurepowershell)
-    - Create a custom role with 'Microsoft.KeyVault/vaults/secrets/getSecret/action' permissions
+    - Create a custom role with 'Microsoft.KeyVault/vaults/secrets/setSecret/action' permissions
     - Create an Entra ID App [Entra ID App Registration](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
     - Assign the custom role, assign to principal: (https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
     - Create an [App Secret](https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
