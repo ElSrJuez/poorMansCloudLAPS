@@ -213,10 +213,10 @@ try{
     }
     if ($false -eq $Config.PasswordNeverExpires) {
         $localAdminWMI = Get-WmiObject -Query "SELECT * FROM Win32_UserAccount WHERE SID='$($localAdmin.SID)'"
-        $passwordExpires = $localAdminWMI.Properties | 
+        [bool]$passwordExpires = $localAdminWMI.Properties | 
             where-Object {$_.Name -eq 'PasswordExpires'} |
                 Select-Object -ExpandProperty Value
-        if ($Config.PasswordNeverExpires -eq $passwordExpires) {
+        if ([bool]($Config.PasswordNeverExpires) -eq $passwordExpires) {
             Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$(PasswordNeverExpires)'."
             $localAdmin | Set-LocalUser -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
             Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
