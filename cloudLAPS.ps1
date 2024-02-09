@@ -106,7 +106,7 @@ try{
     Exit 1
 }
 
-Remove-Variable newPwd, newPwdSecStr, AZToken, WriteSecretSuccess,localAdminWMI, passwordExpires, passwordExpirationDate, myCurrentDate -ErrorAction SilentlyContinue
+Remove-Variable newPwd, newPwdSecStr, AZToken, WriteSecretSuccess,localAdminWMI, passwordExpires, passwordExpirationDate, myCurrentDate,azContext -ErrorAction SilentlyContinue
 try{
     Write-CustomEventLog "Starting password rotation flow for '$($localAdmin.Name)', setting PasswordNeverExpires is '$($Config.PasswordNeverExpires)', setting WhatIf is '$($Config.WhatIf)'..."
     $newPwd = Get-NewPassword $Config.minimumPasswordLength
@@ -115,18 +115,26 @@ try{
     if ( -not $AZToken ) { 
         Write-CustomEventLog "Unexpected result connecting to azure on tenant '$($Config.tenantID)' with Client ID '$($Config.AZAppID)'."
         throw 
+    } ELSE {        
+        Write-CustomEventLog "Connected to Entra ID tenant '$($Config.tenantID)' with Client ID '$($Config.AZAppID)', token type '$($AZToken.token_type)', token expiration '$($AZToken.expires_in)'."
     }
     if ($false -eq $Config.PasswordNeverExpires) {
-        $localAdminWMI = Get-WmiObject -Query "SELECT * FROM Win32_UserAccount WHERE SID='$($localAdmin.SID)'"
+        $localAdminWMI = Get-WmiObject -Query "SELECT * FROM Win32_UserAccount WHERE SID='$($localAdmin.SID.value)' AND LocalAccount='true'"
         [bool]$passwordExpires = $localAdminWMI.Properties | 
             where-Object {$_.Name -eq 'PasswordExpires'} |
                 Select-Object -ExpandProperty Value
         if ([bool]($Config.PasswordNeverExpires) -eq $passwordExpires) {
             Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$(PasswordNeverExpires)'."
             $localAdmin | Set-LocalUser -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
-            Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
+            Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) changed to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
+        } else
+        {
+            Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) already set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
         }
+    } else {
+        Write-CustomEventLog "CloudLAPS is configured for PasswordNeverExpires to $($Config.PasswordNeverExpires), this prevents using normal password expiration policy to manage password reset cadence."
     }
+
     $myCurrentDate = Get-Date
     [datetime]$passwordExpirationDate = Get-LocalUser $localAdmin |
         Select-Object -ExpandProperty PasswordExpires
@@ -146,10 +154,9 @@ try{
 }catch{
     Write-CustomEventLog "Unexpected error returned trying to set new password for $($localAdmin.Name)"
     Write-Host "Failed to set password for $($localAdmin.Name) because of $($_)"
-    # Exit 1
+    Exit 1
 }
 
 Write-Host "CloudLAPS ran successfully for '$($localAdmin.Name)' with WhatIf '$($Config.WhatIf)'."
 Write-CustomEventLog "CloudLAPS ran successfully for '$($localAdmin.Name)' with WhatIf '$($Config.WhatIf)'."
-#Set-Content -Path $markerFile -Value $Config.localAdminName -Force -Confirm:$False | Out-Null
-# Exit 0
+Exit 0
