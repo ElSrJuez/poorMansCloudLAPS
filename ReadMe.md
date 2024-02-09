@@ -12,9 +12,10 @@
 - Stores passwords in Azure Key Vault using Computer Name
 - Authentication using Azure App
 - Maximum possible security - App only requires 'Set Secret' permission on key vault (Cannot read secrets)
-- Logs activites to a Log Analytics Workspace
-- Soes not need additional PowerShell modules
-- Soes not use/need Intune
+- Logs activites to a Log Analytics Workspace **
+- Does not need external PowerShell modules
+- Does not use/need Intune
+- Uses Windows Password expiration policy to establish password reset cadence
 
 ## Prerequirements:
 - Source code from here
