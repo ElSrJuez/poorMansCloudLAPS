@@ -1,12 +1,18 @@
 <#
     .DESCRIPTION
-    a simple solution for Servers
+    A simple Cloud-based LAPS solution for Servers
     It all started from leanLAPS from LiebenConsulting: leanLAPS
     Forked from simpleLAPS from TrueKillRob:https://github.com/TrueKillRob/slaps/tree/main
     
     Installation:
     Get General info here:
     https://github.com/ElSrJuez/poorMansCloudLAPS
+
+    .NOTES
+    Version:        0.1
+    Author:         https://github.com/ElSrJuez/
+    Creation Date:  8-Feb-2024
+    Purpose/Change: Truly Azure Cloud-native LAPS solution that works on Servers
 #>
 
 Import-Module .\module\CloudLAPS-reqs.psm1
@@ -36,15 +42,15 @@ else {
 
 $Error.Clear()
 
-Remove-Variable localAdmin, BlackHole -ErrorAction SilentlyContinue
+Remove-Variable localAdmin, ExistingLocalAccount -ErrorAction SilentlyContinue
 try{    
     $localAdmin = Get-LocalUser | Where-Object { $_.SID.Value.EndsWith("-500") }
     if ( $Config.localAdminName -and ($true -eq $Config.renameAdminAccount) -and $localAdmin.Name -ne $Config.localAdminName) {
         Write-CustomEventLog "Rename local Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'"        
-        $BlackHole = Get-LocalUser -Name $Config.localAdminName -ErrorAction:SilentlyContinue
-        if ( $BlackHole ) {
-            Write-CustomEventLog "Remove preexisting '$($localAdmin.Name)' '$($BlackHole.SID.Value)'"
-            Remove-LocalUser -SID $BlackHole.SID.Value -Confirm:$False -WhatIf:$Config.WhatIf | Out-Null
+        $ExistingLocalAccount = Get-LocalUser -Name $Config.localAdminName -ErrorAction:SilentlyContinue
+        if ( $ExistingLocalAccount ) {
+            Write-CustomEventLog "Remove preexisting '$($localAdmin.Name)' '$($ExistingLocalAccount.SID.Value)'"
+            Remove-LocalUser -SID $ExistingLocalAccount.SID.Value -Confirm:$False -WhatIf:$Config.WhatIf | Out-Null
         }
         Rename-LocalUser -SID $localAdmin.SID.Value -NewName $Config.localAdminName -Confirm:$false -WhatIf:$Config.WhatIf | Out-Null
         #$localAdmin = Get-LocalUser -SID $localAdmin.SID.Value
