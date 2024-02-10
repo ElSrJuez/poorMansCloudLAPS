@@ -22,6 +22,7 @@ class clsScriptState
     # Optionally, add attributes to prevent invalid values
     [string]$State
     [ValidateNotNullOrEmpty()][string]$Stage = 'New'
+    [string]$Result
     [ValidateNotNullOrEmpty()][bool]$Error = $False
     [string]$Description
     [ValidateNotNullOrEmpty()][int]$ReturnCode = 0
@@ -177,8 +178,9 @@ if ($LAPSState.Error -eq $False) {
             {
                 Write-CustomEventLog "PasswordNeverExpires for $($localAdminWMI.Name) already set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
             }
-        } else {
-            Write-CustomEventLog "CloudLAPS is configured for PasswordNeverExpires to $($Config.PasswordNeverExpires), this prevents using normal password expiration policy to manage password reset cadence."
+        } else {            
+            $LAPSState.Result = "CloudLAPS is configured for PasswordNeverExpires to $($Config.PasswordNeverExpires), this prevents using normal password expiration policy to manage password reset cadence."
+            Write-CustomEventLog $LAPSState.Result
         }
 
         $myCurrentDate = Get-Date
@@ -188,7 +190,8 @@ if ($LAPSState.Error -eq $False) {
         [datetime]$pwExpDateCalc = $passwordExpirationDate.AddDays(-$Config.PolicyGracePeriodDays)
         if ($myCurrentDate -gt $pwExpDateCalc) {            
             $LAPSState.Stage = 'StoreNewPassword'
-            Write-CustomEventLog "Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)': password can be changed since '$pwExpDateCalc'."
+            $LAPSState.Result = "Password can be changed since '$pwExpDateCalc': Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)'."
+            Write-CustomEventLog $LAPSState.Result
             $WriteSecretSuccess = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
             if ( -not $WriteSecretSuccess ) { 
                 Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
@@ -200,7 +203,8 @@ if ($LAPSState.Error -eq $False) {
         }
         else
         {
-            Write-CustomEventLog "Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)': password should not be changed until '$pwExpDateCalc'."
+            $LAPSState.Result = "Password should not be changed until '$pwExpDateCalc': Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)'."
+            Write-CustomEventLog $LAPSState.Result
         }
     }catch{
         $LAPSState.Description = "Unexpected error trying to set password for $($localAdmin.Name), '$($_)'."
