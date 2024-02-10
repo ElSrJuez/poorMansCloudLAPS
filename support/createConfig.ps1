@@ -14,7 +14,7 @@ $cloudLAPSConfig | Add-Member -NotePropertyName Debug -NotePropertyValue $true
 $cloudLAPSConfig | Add-Member -NotePropertyName WhatIf  -NotePropertyValue $true 
 $cloudLAPSConfig | Add-Member -NotePropertyName minimumPasswordLength -NotePropertyValue 21
 # password will be changed only if has less than days from Windows maximum password age policy
-$cloudLAPSConfig | Add-Member -NotePropertyName pPolicyGracePeriodDays -NotePropertyValue 15
+$cloudLAPSConfig | Add-Member -NotePropertyName PolicyGracePeriodDays -NotePropertyValue 15
 # ID of Entra ID Tenant where AZKeyVault and Log Analytics Workspace are located
 $cloudLAPSConfig | Add-Member -NotePropertyName tenantID -NotePropertyValue "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # Entra ID App ID for Authentication

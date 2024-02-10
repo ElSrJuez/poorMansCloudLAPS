@@ -149,7 +149,7 @@ if ($LAPSState.Error -eq $False) {
 }
 
 if ($LAPSState.Error -eq $False) {
-    Remove-Variable newPwd, newPwdSecStr, AZToken, WriteSecretSuccess,localAdminWMI, passwordExpires, passwordExpirationDate, myCurrentDate,azContext -ErrorAction SilentlyContinue
+    Remove-Variable newPwd, newPwdSecStr, AZToken, WriteSecretSuccess,localAdminWMI, passwordExpires, passwordExpirationDate, myCurrentDate,azContext,pwExpDateCalc -ErrorAction SilentlyContinue
     $LAPSState.Stage = 'ConnectKeyVault'
     try{
         Write-CustomEventLog "Starting password rotation flow for '$($localAdmin.Name)', setting PasswordNeverExpires is '$($Config.PasswordNeverExpires)', setting WhatIf is '$($Config.WhatIf)'..."
@@ -185,8 +185,10 @@ if ($LAPSState.Error -eq $False) {
         $LAPSState.Stage = 'QueryAdminAccountPasswordExpirationDate'
         [datetime]$passwordExpirationDate = Get-LocalUser $localAdmin |
             Select-Object -ExpandProperty PasswordExpires
-        if ($myCurrentDate -gt $passwordExpirationDate) {
+        [datetime]$pwExpDateCalc = $passwordExpirationDate.AddDays(-$Config.PolicyGracePeriodDays)
+        if ($myCurrentDate -gt $pwExpDateCalc) {            
             $LAPSState.Stage = 'StoreNewPassword'
+            Write-CustomEventLog "Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)': password can be changed since '$pwExpDateCalc'."
             $WriteSecretSuccess = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
             if ( -not $WriteSecretSuccess ) { 
                 Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
