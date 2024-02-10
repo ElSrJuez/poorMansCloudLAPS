@@ -170,7 +170,7 @@ if ($LAPSState.Error -eq $False) {
                     Select-Object -ExpandProperty Value
             if ([bool]($Config.PasswordNeverExpires) -eq $passwordExpires) {
                 $LAPSState.Stage = 'SetAdminAccountPasswordExpiration'
-                Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$(PasswordNeverExpires)'."
+                Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$($passwordExpires)'."
                 $localAdmin | Set-LocalUser -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
                 Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) changed to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
             } else
@@ -215,4 +215,4 @@ if ($LAPSState.Error -eq $False) {
 }
 
 Write-CustomEventLog "Exiting script with state '$($LAPSState.State)', stage '$($LAPSState.Stage)',  error '$($LAPSState.Error)', return code '$($LAPSState.ReturnCode)'."
-exit $LAPSState.ReturnCode
+#exit $LAPSState.ReturnCode
