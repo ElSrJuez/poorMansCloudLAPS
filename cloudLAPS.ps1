@@ -168,7 +168,7 @@ if ($LAPSState.Error -eq $False) {
             [bool]$passwordExpires = $localAdminWMI.Properties | 
                 where-Object {$_.Name -eq 'PasswordExpires'} |
                     Select-Object -ExpandProperty Value
-            if ([bool]($Config.PasswordNeverExpires) -eq $passwordExpires) {
+            if ([bool]($Config.PasswordNeverExpires) -ne $passwordExpires) {
                 $LAPSState.Stage = 'SetAdminAccountPasswordExpiration'
                 Write-CustomEventLog "Password Expiration setting for $($localAdminWMI.Name) should be '$($Config.PasswordNeverExpires)', found '$($passwordExpires)'."
                 $localAdmin | Set-LocalUser -PasswordNeverExpires $Config.PasswordNeverExpires -WhatIf:$Config.WhatIf | Out-Null
