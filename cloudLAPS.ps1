@@ -175,7 +175,7 @@ if ($LAPSState.Error -eq $False) {
                 Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) changed to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
             } else
             {
-                Write-CustomEventLog "Password Expiration for $($localAdminWMI.Name) already set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
+                Write-CustomEventLog "PasswordNeverExpires for $($localAdminWMI.Name) already set to '$($Config.PasswordNeverExpires)' with WhatIf mode set to '$($Config.WhatIf)'."
             }
         } else {
             Write-CustomEventLog "CloudLAPS is configured for PasswordNeverExpires to $($Config.PasswordNeverExpires), this prevents using normal password expiration policy to manage password reset cadence."
@@ -200,7 +200,7 @@ if ($LAPSState.Error -eq $False) {
         }
         else
         {
-            Write-CustomEventLog "Password for $($localAdmin.Name) did not need to be set, current date '$myCurrentDate' is greater than password expiration date '$($passwordExpirationDate)'."
+            Write-CustomEventLog "Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)': password should not be changed until '$pwExpDateCalc'."
         }
     }catch{
         $LAPSState.Description = "Unexpected error trying to set password for $($localAdmin.Name), '$($_)'."
