@@ -215,5 +215,13 @@ if ($LAPSState.Error -eq $False) {
     Write-CustomEventLog $LAPSState.Description   
 }
 
-Write-CustomEventLog "Exiting script with state '$($LAPSState.State)', stage '$($LAPSState.Stage)', error '$($LAPSState.Error)', return code '$($LAPSState.ReturnCode)'."
+# Sending the data to Log Analytics Workspace
+Remove-Variable PayloadJSON, LAResponse -ErrorAction SilentlyContinue
+$PayloadJSON = $LAPSState | ConvertTo-Json
+Write-CustomEventLog "Starting upload to workspace '$($Config.AzLAWorkspaceID)' with payload size $($PayloadJSON.Length)..."
+
+# Submit the data to the API endpoint
+$LAResponse = Send-LogAnalyticsData -customerId $Config.AzLAWorkspaceID -sharedKey $config.AzLAWorkspaceSecret -body ([System.Text.Encoding]::UTF8.GetBytes($PayloadJSON)) -logType 'CloudLAPS'
+
+Write-CustomEventLog "Exiting script with state '$($LAPSState.State)', stage '$($LAPSState.Stage)', error '$($LAPSState.Error)', return code '$($LAPSState.ReturnCode)', Log Analytics Response '$LAResponse'."
 #exit $LAPSState.ReturnCode

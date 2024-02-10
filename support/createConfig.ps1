@@ -23,6 +23,10 @@ $cloudLAPSConfig | Add-Member -NotePropertyName AZAppID -NotePropertyValue "yyyy
 $cloudLAPSConfig | Add-Member -NotePropertyName AZAppSecret -NotePropertyValue "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
 # Azure Key Vault Name
 $cloudLAPSConfig | Add-Member -NotePropertyName AZVaultName -NotePropertyValue "KeyVault-01"
+# ID of Azure Log Analytics Workspace
+$cloudLAPSConfig | Add-Member -NotePropertyName AzLAWorkspaceID -NotePropertyValue "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# Secret of Azure Log Analytics Workspace
+$cloudLAPSConfig | Add-Member -NotePropertyName AzLAWorkspaceSecret -NotePropertyValue "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # Set to True if renaming the local Administrator account is needed. Specify new name with localAdminName 
 $cloudLAPSConfig | Add-Member -NotePropertyName renameAdminAccount -NotePropertyValue $false
 # Name of the local Administrator account. Needed for conformance and required if renameAdminAccount is set to $true
