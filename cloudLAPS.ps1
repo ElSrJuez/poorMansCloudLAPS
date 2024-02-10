@@ -9,7 +9,7 @@
     https://github.com/ElSrJuez/poorMansCloudLAPS
 
     .NOTES
-    Version:        0.1
+    Version:        0.2
     Author:         https://github.com/ElSrJuez/
     Creation Date:  8-Feb-2024
     Purpose/Change: Truly Azure Cloud-native LAPS solution that works on Servers
