@@ -12,7 +12,7 @@
 - Stores passwords in Azure Key Vault using Computer Name
 - Authentication using Azure App
 - Maximum possible security - App only requires 'Set Secret' permission on key vault (Cannot read secrets)
-- Logs activites to a Log Analytics Workspace **
+- Logs activites to a Log Analytics Workspace
 - Does not need external PowerShell modules
 - Does not use/need Intune
 - Uses Windows Password expiration policy to establish password reset cadence
@@ -35,8 +35,9 @@
 6. Create a Log Analytics workspace [https://learn.microsoft.com/en-us/azure/azure-monitor/logs/quick-create-workspace?tabs=azure-portal]
 
 ## Creating a parameters file
-1. Create a copy of the parameters xml file template
+1. Run createConfig.ps1 to create a sample configuration file
 2. Modify parameters as needed
+3. Rename config template file to CloudLAPS.xml, this file should be in the same folder where the script resides/is run from.
 
 ## Installation of CloudLAPS.ps1
 1. On a test computer, create a folder like C:\Temp\CloudLAPS
@@ -47,3 +48,6 @@
 6. Check the Log Analytics workspace for activity **
 7. Check the Key Vault for the updated secret
 9. If all works, create a Scheduled Task that runs this script as SYSTEM with the desired frequency.
+
+## TODO:
+1. Switch to Managed Identity authentication (Azure VM and Arc Onboarded Servers).
