@@ -20,6 +20,8 @@ Import-Module .\module\CloudLAPS-reqs.psm1
 class clsScriptState
 {
     # Optionally, add attributes to prevent invalid values
+    [string]$ComputerName = $env:COMPUTERNAME
+    [string]$LocalAdminName
     [string]$State
     [ValidateNotNullOrEmpty()][string]$Stage = 'New'
     [string]$Result
@@ -38,9 +40,8 @@ $LAPSState.Stage = 'AdminCheck'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal -ArgumentList $identity
 if ($principal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )) {
-    Write-CustomEventLog "CloudLAPS starting on $($ENV:COMPUTERNAME) with Invocation Command '$($MyInvocation.MyCommand)' under Identity $($identity.name)."
-}
-else {
+    Write-CustomEventLog "CloudLAPS starting on $($LAPSState.ComputerName) with Invocation Command '$($MyInvocation.MyCommand)' under Identity $($identity.name)."
+} else {
     $LAPSState.Description = "Identity $($identity.name) was determined not to be Administrator-elevated, exiting."
     Write-CustomEventLog $LAPSState.Description
     $LAPSState.State = 'Cancelled'    
@@ -69,7 +70,8 @@ if ($LAPSState.Error -eq $False) {
     try{    
         $localAdmin = Get-LocalUser | Where-Object { $_.SID.Value.EndsWith("-500") }
         $LAPSState.Stage = 'RenameLocalAdmin'
-        if ( $Config.localAdminName -and ($true -eq $Config.renameAdminAccount) -and $localAdmin.Name -ne $Config.localAdminName) {
+        $LAPSState.LocalAdminName = $localAdmin.name
+        if ( $Config.localAdminName -and ($true -eq $Config.renameAdminAccount) -and $localAdmin.Name -ne $Config.localAdminName) {            
             Write-CustomEventLog "Rename local Administrator from '$($localAdmin.Name)' to '$($Config.localAdminName)'"        
             $ExistingLocalAccount = Get-LocalUser -Name $Config.localAdminName -ErrorAction:SilentlyContinue
             if ( $ExistingLocalAccount ) {
@@ -107,7 +109,7 @@ if ($LAPSState.Error -eq $False) {
     try{
         $administratorsGroupName = (New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")).Translate([System.Security.Principal.NTAccount]).Value.Split("\")[1]
         Write-CustomEventLog "Local Administrators group is called $administratorsGroupName"
-        $group = [ADSI]::new("WinNT://$($env:COMPUTERNAME)/$($administratorsGroupName),Group")
+        $group = [ADSI]::new("WinNT://$($LAPSState.ComputerName)/$($administratorsGroupName),Group")
         $administrators = $group.Invoke('Members') | ForEach-Object {(New-Object -TypeName System.Security.Principal.SecurityIdentifier -ArgumentList @([Byte[]](([ADSI]$_).properties.objectSid).Value, 0)).Value}
         $adminNames = $administrators | 
             foreach {([System.Security.Principal.SecurityIdentifier]$_).translate([System.Security.Principal.NTAccount])}
@@ -192,9 +194,9 @@ if ($LAPSState.Error -eq $False) {
             $LAPSState.Stage = 'StoreNewPassword'
             $LAPSState.Result = "Password can be changed since '$pwExpDateCalc': Current date '$myCurrentDate', configured expiration grace period is '$($Config.PolicyGracePeriodDays)', Windows password expiration date is '$($passwordExpirationDate)'."
             Write-CustomEventLog $LAPSState.Result
-            $WriteSecretSuccess = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($env:COMPUTERNAME) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
+            $WriteSecretSuccess = Write-AZKeyVaultSecret -VaultName $Config.AZVaultName -SecretName $($LAPSState.ComputerName) -Token $AZToken -UserName $Config.localAdminName -Secret $newPwd
             if ( -not $WriteSecretSuccess ) { 
-                Write-CustomEventLog "Unexpected result setting secret name '$($env:COMPUTERNAME)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
+                Write-CustomEventLog "Unexpected result setting secret name '$($LAPSState.ComputerName)' to azure vault '$($Config.AZVaultName)' with User Name '$($Config.localAdminName)'."    
                 throw
                 }
             $LAPSState.Stage = 'SetNewPassword'
